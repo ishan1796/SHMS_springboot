@@ -4,8 +4,10 @@ import com.aegiscare.hospital.entity.LabOrder;
 import com.aegiscare.hospital.entity.LabResult;
 import com.aegiscare.hospital.entity.LabTest;
 import com.aegiscare.hospital.service.LabService;
+import com.aegiscare.hospital.service.MedicalReportCleanupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +21,9 @@ public class LabController {
 
     @Autowired
     private LabService labService;
+
+    @Autowired
+    private MedicalReportCleanupService cleanupService;
 
     @GetMapping("/tests")
     public ResponseEntity<Map<String, Object>> getTests() {
@@ -56,6 +61,16 @@ public class LabController {
         Map<String, Object> res = new HashMap<>();
         res.put("success", true);
         res.put("result", lr);
+        return ResponseEntity.ok(res);
+    }
+
+    @DeleteMapping("/reports/cleanup")
+    public ResponseEntity<Map<String, Object>> cleanupOldReports(@RequestParam(defaultValue = "3") int months) {
+        int deleted = cleanupService.cleanupReportsOlderThanMonths(months);
+        Map<String, Object> res = new HashMap<>();
+        res.put("success", true);
+        res.put("deletedCount", deleted);
+        res.put("message", "Successfully purged medical reports older than " + months + " months from database.");
         return ResponseEntity.ok(res);
     }
 }
