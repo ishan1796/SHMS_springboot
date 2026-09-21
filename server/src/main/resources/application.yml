@@ -1,0 +1,39 @@
+server:
+  port: 5000
+
+spring:
+  application:
+    name: hospital-management-server
+
+  # Default datasource: PostgreSQL with automatic fallback to H2 in-memory
+  datasource:
+    url: ${DATABASE_URL:jdbc:h2:mem:hospital_db;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE}
+    driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
+    username: ${DATABASE_USERNAME:sa}
+    password: ${DATABASE_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:hospital_management_secret_key_2026_super_secure_enterprise_key_aegiscare_demo}
+    expiration-ms: 604800000 # 7 days
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+  cors:
+    allowed-origins: ${CORS_ORIGIN:http://localhost:5173,http://localhost:3000}
