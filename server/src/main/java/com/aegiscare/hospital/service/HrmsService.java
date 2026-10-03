@@ -17,10 +17,15 @@ public class HrmsService {
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final DoctorRepository doctorRepository;
+    private final NurseRepository nurseRepository;
+    private final LeaveRequestRepository leaveRequestRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final PayrollRecordRepository payrollRecordRepository;
     private final AppointmentRepository appointmentRepository;
     private final EncounterRepository encounterRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final NursingNoteRepository nursingNoteRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public HrmsService(EmployeeRepository employeeRepository,
                        UserRepository userRepository,
