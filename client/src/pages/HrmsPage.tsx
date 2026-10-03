@@ -20,7 +20,9 @@ import {
   Building2,
   Stethoscope,
   Activity,
-  Search
+  Search,
+  Trash2,
+  UserPlus
 } from "lucide-react";
 import { AiExecutiveSummaryBanner } from "../components/common/AiExecutiveSummaryBanner";
 
@@ -175,6 +177,26 @@ export const HrmsPage: React.FC = () => {
     }
   };
 
+  const openAddModalWithRole = (role: "DOCTOR" | "NURSE" | "HRMS") => {
+    handleRoleChange(role);
+    setAddEmpModalOpen(true);
+  };
+
+  const handleDeleteEmployee = async (id: string, name: string, role: string) => {
+    if (!window.confirm(`Are you sure you want to remove ${role} ${name} from hospital records?\n\nThis will permanently delete their employee profile and login account.`)) {
+      return;
+    }
+    try {
+      const res = await api.delete(`/hrms/employees/${id}`);
+      if (res.data.success) {
+        alert(`${role} ${name} has been successfully deleted from hospital staff.`);
+        fetchHrmsData();
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to delete employee.");
+    }
+  };
+
   const handleApplyLeave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLeaveLoading(true);
@@ -315,8 +337,8 @@ export const HrmsPage: React.FC = () => {
                   <UserCheck className="w-5 h-5 text-pink-600" />
                   <span>Hospital Staff Directory</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="relative w-60">
+                <div className="flex items-center gap-2">
+                  <div className="relative w-52">
                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                     <input
                       type="text"
@@ -328,11 +350,28 @@ export const HrmsPage: React.FC = () => {
                   </div>
                   <Button
                     size="sm"
+                    onClick={() => openAddModalWithRole("DOCTOR")}
+                    icon={<Stethoscope className="w-3.5 h-3.5" />}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs"
+                  >
+                    + Add Doctor
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => openAddModalWithRole("NURSE")}
+                    icon={<Activity className="w-3.5 h-3.5" />}
+                    className="bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs"
+                  >
+                    + Add Nurse
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => setAddEmpModalOpen(true)}
                     icon={<Plus className="w-3.5 h-3.5" />}
-                    className="bg-pink-600 hover:bg-pink-500 text-white font-bold"
+                    className="text-pink-700 border-pink-300 hover:bg-pink-50 font-semibold text-xs"
                   >
-                    + Add New Employee
+                    + Other Staff
                   </Button>
                 </div>
               </div>
@@ -399,6 +438,26 @@ export const HrmsPage: React.FC = () => {
                     <Badge variant={r.employmentStatus === "ACTIVE" ? "success" : "warning"} dot>
                       {r.employmentStatus || "ACTIVE"}
                     </Badge>
+                  ),
+                },
+                {
+                  header: "Actions",
+                  accessor: (r: any) => (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      className="py-1 px-2.5 text-xs font-semibold"
+                      onClick={() =>
+                        handleDeleteEmployee(
+                          r.id,
+                          `${r.user?.firstName || ""} ${r.user?.lastName || ""}`.trim(),
+                          r.user?.role || "Staff"
+                        )
+                      }
+                      icon={<Trash2 className="w-3.5 h-3.5" />}
+                    >
+                      Delete
+                    </Button>
                   ),
                 },
               ]}

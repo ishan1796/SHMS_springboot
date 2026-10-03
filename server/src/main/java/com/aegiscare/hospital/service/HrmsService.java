@@ -17,11 +17,10 @@ public class HrmsService {
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final DoctorRepository doctorRepository;
-    private final NurseRepository nurseRepository;
-    private final LeaveRequestRepository leaveRequestRepository;
-    private final AttendanceRepository attendanceRepository;
-    private final PayrollRecordRepository payrollRecordRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final AppointmentRepository appointmentRepository;
+    private final EncounterRepository encounterRepository;
+    private final PrescriptionRepository prescriptionRepository;
+    private final NursingNoteRepository nursingNoteRepository;
 
     public HrmsService(EmployeeRepository employeeRepository,
                        UserRepository userRepository,
@@ -31,6 +30,10 @@ public class HrmsService {
                        LeaveRequestRepository leaveRequestRepository,
                        AttendanceRepository attendanceRepository,
                        PayrollRecordRepository payrollRecordRepository,
+                       AppointmentRepository appointmentRepository,
+                       EncounterRepository encounterRepository,
+                       PrescriptionRepository prescriptionRepository,
+                       NursingNoteRepository nursingNoteRepository,
                        PasswordEncoder passwordEncoder) {
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
@@ -40,6 +43,10 @@ public class HrmsService {
         this.leaveRequestRepository = leaveRequestRepository;
         this.attendanceRepository = attendanceRepository;
         this.payrollRecordRepository = payrollRecordRepository;
+        this.appointmentRepository = appointmentRepository;
+        this.encounterRepository = encounterRepository;
+        this.prescriptionRepository = prescriptionRepository;
+        this.nursingNoteRepository = nursingNoteRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -173,5 +180,74 @@ public class HrmsService {
             records.add(payrollRecordRepository.save(pr));
         }
         return records;
+    }
+
+    @Transactional
+    public void deleteEmployee(String employeeId) {
+        Employee emp = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + employeeId));
+
+        User user = emp.getUser();
+
+        // 1. Delete associated HRMS records
+        leaveRequestRepository.deleteAll(leaveRequestRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId));
+        attendanceRepository.deleteAll(attendanceRepository.findByEmployeeIdOrderByDateDesc(employeeId));
+        payrollRecordRepository.deleteAll(payrollRecordRepository.findByEmployeeIdOrderByYearDescMonthDesc(employeeId));
+
+        // 2. Clean up Doctor entity if exists
+        Optional<Doctor> docOpt = doctorRepository.findByEmployeeId(employeeId);
+        if (docOpt.isPresent()) {
+            Doctor doc = docOpt.get();
+            // Reassign or clean appointments/encounters/prescriptions to prevent orphan foreign keys
+            List<Doctor> otherDocs = doctorRepository.findAll().stream()
+                    .filter(d -> !d.getId().equals(doc.getId()))
+                    .toList();
+            Doctor fallbackDoc = otherDocs.isEmpty() ? null : otherDocs.get(0);
+
+            List<Appointment> appts = appointmentRepository.findByDoctorId(doc.getId());
+            for (Appointment a : appts) {
+                if (fallbackDoc != null) {
+                    a.setDoctor(fallbackDoc);
+                    appointmentRepository.save(a);
+                } else {
+                    appointmentRepository.delete(a);
+                }
+            }
+
+            List<Encounter> encounters = encounterRepository.findByDoctorId(doc.getId());
+            for (Encounter enc : encounters) {
+                if (fallbackDoc != null) {
+                    enc.setDoctor(fallbackDoc);
+                    encounterRepository.save(enc);
+                }
+            }
+
+            List<Prescription> prescriptions = prescriptionRepository.findByDoctorId(doc.getId());
+            for (Prescription p : prescriptions) {
+                if (fallbackDoc != null) {
+                    p.setDoctor(fallbackDoc);
+                    prescriptionRepository.save(p);
+                }
+            }
+
+            doctorRepository.delete(doc);
+        }
+
+        // 3. Clean up Nurse entity if exists
+        Optional<Nurse> nurseOpt = nurseRepository.findByEmployeeId(employeeId);
+        if (nurseOpt.isPresent()) {
+            Nurse nurse = nurseOpt.get();
+            List<NursingNote> notes = nursingNoteRepository.findByNurseId(nurse.getId());
+            nursingNoteRepository.deleteAll(notes);
+            nurseRepository.delete(nurse);
+        }
+
+        // 4. Delete Employee record
+        employeeRepository.delete(emp);
+
+        // 5. Delete linked User login account
+        if (user != null) {
+            userRepository.delete(user);
+        }
     }
 }

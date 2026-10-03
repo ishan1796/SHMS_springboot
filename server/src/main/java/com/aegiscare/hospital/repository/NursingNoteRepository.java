@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface NursingNoteRepository extends JpaRepository<NursingNote, String> {
     List<NursingNote> findByPatientIdOrderByCreatedAtDesc(String patientId);
+    List<NursingNote> findByNurseId(String nurseId);
 }

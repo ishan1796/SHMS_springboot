@@ -41,6 +41,15 @@ public class HrmsController {
         return ResponseEntity.ok(res);
     }
 
+    @DeleteMapping("/employees/{id}")
+    public ResponseEntity<Map<String, Object>> deleteEmployee(@PathVariable String id) {
+        hrmsService.deleteEmployee(id);
+        Map<String, Object> res = new HashMap<>();
+        res.put("success", true);
+        res.put("message", "Employee and associated hospital credentials deleted successfully.");
+        return ResponseEntity.ok(res);
+    }
+
     @GetMapping("/departments")
     public ResponseEntity<Map<String, Object>> getDepartments() {
         List<Department> list = hrmsService.getAllDepartments();
