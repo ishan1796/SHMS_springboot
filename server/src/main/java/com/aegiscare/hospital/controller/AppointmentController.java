@@ -1,6 +1,7 @@
 package com.aegiscare.hospital.controller;
 
 import com.aegiscare.hospital.entity.Appointment;
+import com.aegiscare.hospital.entity.Doctor;
 import com.aegiscare.hospital.service.ClinicalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,28 @@ public class AppointmentController {
         Map<String, Object> res = new HashMap<>();
         res.put("success", true);
         res.put("appointments", list);
+        return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/doctors")
+    public ResponseEntity<Map<String, Object>> getDoctors() {
+        List<Doctor> docs = clinicalService.getAllDoctors();
+        Map<String, Object> res = new HashMap<>();
+        res.put("success", true);
+        res.put("doctors", docs);
+        return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/slots")
+    public ResponseEntity<Map<String, Object>> getSlots(
+            @RequestParam String doctorId,
+            @RequestParam(required = false) String date) {
+        List<Map<String, Object>> slots = clinicalService.getAvailableSlots(doctorId, date);
+        Map<String, Object> res = new HashMap<>();
+        res.put("success", true);
+        res.put("doctorId", doctorId);
+        res.put("date", date);
+        res.put("slots", slots);
         return ResponseEntity.ok(res);
     }
 

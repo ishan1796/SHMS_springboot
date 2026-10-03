@@ -37,6 +37,13 @@ public class Patient {
     private String emergencyPhone;
     private String allergies;
     private String medicalHistory;
+
+    // Doctor Admission Advice Flag & Details
+    private boolean admissionAdvised = false;
+    private String admissionAdviceNotes;
+    private String admissionAdvisedBy;
+    private LocalDateTime admissionAdvisedAt;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public Patient() {}
@@ -71,6 +78,14 @@ public class Patient {
     public void setAllergies(String allergies) { this.allergies = allergies; }
     public String getMedicalHistory() { return medicalHistory; }
     public void setMedicalHistory(String medicalHistory) { this.medicalHistory = medicalHistory; }
+    public boolean isAdmissionAdvised() { return admissionAdvised; }
+    public void setAdmissionAdvised(boolean admissionAdvised) { this.admissionAdvised = admissionAdvised; }
+    public String getAdmissionAdviceNotes() { return admissionAdviceNotes; }
+    public void setAdmissionAdviceNotes(String admissionAdviceNotes) { this.admissionAdviceNotes = admissionAdviceNotes; }
+    public String getAdmissionAdvisedBy() { return admissionAdvisedBy; }
+    public void setAdmissionAdvisedBy(String admissionAdvisedBy) { this.admissionAdvisedBy = admissionAdvisedBy; }
+    public LocalDateTime getAdmissionAdvisedAt() { return admissionAdvisedAt; }
+    public void setAdmissionAdvisedAt(LocalDateTime admissionAdvisedAt) { this.admissionAdvisedAt = admissionAdvisedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

@@ -31,11 +31,13 @@ export const PatientPortalPage: React.FC = () => {
   const [bookModalOpen, setBookModalOpen] = useState(false);
 
   const [doctors, setDoctors] = useState<any[]>([]);
+  const [slots, setSlots] = useState<any[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [bookForm, setBookForm] = useState({
     doctorId: "",
     departmentId: "",
     appointmentDate: new Date().toISOString().split("T")[0],
-    timeSlot: "10:00 AM",
+    timeSlot: "",
     reason: "",
   });
   const [bookLoading, setBookLoading] = useState(false);
@@ -52,6 +54,64 @@ export const PatientPortalPage: React.FC = () => {
 
   const activeView = getActiveView();
 
+  const fetchDoctors = async () => {
+    try {
+      const res = await api.get("/appointments/doctors");
+      if (res.data.success && res.data.doctors.length > 0) {
+        setDoctors(res.data.doctors);
+        if (!bookForm.doctorId) {
+          setBookForm((prev) => ({
+            ...prev,
+            doctorId: res.data.doctors[0].id,
+            departmentId: res.data.doctors[0].departmentId,
+          }));
+        }
+      } else {
+        // Fallback to appointments
+        const apptRes = await api.get("/appointments");
+        if (apptRes.data.success && apptRes.data.appointments.length > 0) {
+          const uniqueDocs = Array.from(
+            new Map(apptRes.data.appointments.map((a: any) => [a.doctorId, a.doctor])).values()
+          ).filter(Boolean);
+          setDoctors(uniqueDocs);
+          if (uniqueDocs.length > 0 && !bookForm.doctorId) {
+            setBookForm((prev) => ({
+              ...prev,
+              doctorId: (uniqueDocs[0] as any).id,
+              departmentId: (uniqueDocs[0] as any).departmentId,
+            }));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching doctors:", err);
+    }
+  };
+
+  const fetchSlots = async (doctorId: string, date: string) => {
+    if (!doctorId || !date) return;
+    try {
+      setSlotsLoading(true);
+      const res = await api.get("/appointments/slots", {
+        params: { doctorId, date },
+      });
+      if (res.data.success) {
+        setSlots(res.data.slots);
+        // Automatically select the first available slot if current slot is empty or invalid
+        const firstAvail = res.data.slots.find((s: any) => s.isAvailable);
+        if (firstAvail) {
+          setBookForm((prev) => ({ ...prev, timeSlot: firstAvail.timeSlot }));
+        } else {
+          setBookForm((prev) => ({ ...prev, timeSlot: "" }));
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching slots:", err);
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
+
   const fetchPatientProfile = async () => {
     try {
       setLoading(true);
@@ -61,20 +121,7 @@ export const PatientPortalPage: React.FC = () => {
           setPatientData(res.data.patient);
         }
       }
-      const apptRes = await api.get("/appointments");
-      if (apptRes.data.success && apptRes.data.appointments.length > 0) {
-        const uniqueDocs = Array.from(
-          new Map(apptRes.data.appointments.map((a: any) => [a.doctorId, a.doctor])).values()
-        ).filter(Boolean);
-        setDoctors(uniqueDocs);
-        if (uniqueDocs.length > 0 && !bookForm.doctorId) {
-          setBookForm((prev) => ({
-            ...prev,
-            doctorId: (uniqueDocs[0] as any).id,
-            departmentId: (uniqueDocs[0] as any).departmentId,
-          }));
-        }
-      }
+      await fetchDoctors();
     } catch (err) {
       console.error("Error fetching patient data:", err);
     } finally {
@@ -85,6 +132,12 @@ export const PatientPortalPage: React.FC = () => {
   useEffect(() => {
     fetchPatientProfile();
   }, [user?.patientId]);
+
+  useEffect(() => {
+    if (bookModalOpen && bookForm.doctorId && bookForm.appointmentDate) {
+      fetchSlots(bookForm.doctorId, bookForm.appointmentDate);
+    }
+  }, [bookModalOpen, bookForm.doctorId, bookForm.appointmentDate]);
 
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -375,57 +428,91 @@ export const PatientPortalPage: React.FC = () => {
       <Modal
         isOpen={bookModalOpen}
         onClose={() => setBookModalOpen(false)}
-        title="Schedule OPD Consultation"
-        maxWidth="md"
+        title="Schedule OPD Consultation (10-Minute Slots)"
+        maxWidth="lg"
       >
         <form onSubmit={handleBookAppointment} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Select Doctor / Specialty</label>
-            <select
-              value={bookForm.doctorId}
-              onChange={(e) => {
-                const doc = doctors.find((d) => d.id === e.target.value);
-                setBookForm({
-                  ...bookForm,
-                  doctorId: e.target.value,
-                  departmentId: doc?.departmentId || "",
-                });
-              }}
-              className="w-full rounded-lg border border-slate-300 text-sm px-3.5 py-2 text-slate-800"
-            >
-              {doctors.map((d) => (
-                <option key={d.id} value={d.id}>
-                  Dr. {d.employee?.user?.firstName} {d.employee?.user?.lastName} ({d.specialization} - {d.department?.name})
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Select Doctor / Specialty</label>
+              <select
+                value={bookForm.doctorId}
+                onChange={(e) => {
+                  const doc = doctors.find((d) => d.id === e.target.value);
+                  setBookForm({
+                    ...bookForm,
+                    doctorId: e.target.value,
+                    departmentId: doc?.departmentId || "",
+                  });
+                }}
+                className="w-full rounded-lg border border-slate-300 text-sm px-3.5 py-2 text-slate-800"
+              >
+                {doctors.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    Dr. {d.employee?.user?.firstName || d.firstName} {d.employee?.user?.lastName || d.lastName} ({d.specialization || "General"} - {d.department?.name || "OPD"})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">Appointment Date</label>
               <input
                 type="date"
                 required
                 value={bookForm.appointmentDate}
+                min={new Date().toISOString().split("T")[0]}
                 onChange={(e) => setBookForm({ ...bookForm, appointmentDate: e.target.value })}
                 className="w-full rounded-lg border border-slate-300 text-sm px-3.5 py-2 text-slate-800"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Time Slot</label>
-              <select
-                value={bookForm.timeSlot}
-                onChange={(e) => setBookForm({ ...bookForm, timeSlot: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 text-sm px-3.5 py-2 text-slate-800"
-              >
-                <option value="09:00 AM">09:00 AM</option>
-                <option value="10:00 AM">10:00 AM</option>
-                <option value="11:30 AM">11:30 AM</option>
-                <option value="02:00 PM">02:00 PM</option>
-                <option value="04:00 PM">04:00 PM</option>
-              </select>
+          </div>
+
+          {/* 10-Minute Slot Matrix */}
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-xs font-bold text-slate-800">
+                  Select 10-Minute Time Slot ({bookForm.timeSlot ? `Selected: ${bookForm.timeSlot}` : "Please pick a slot"})
+                </label>
+                <p className="text-[11px] text-slate-500">
+                  Each OPD consultation is strictly booked in 10-minute intervals to prevent queue congestion.
+                </p>
+              </div>
+              {slotsLoading && <span className="text-xs text-teal-600 font-semibold animate-pulse">Checking availability...</span>}
             </div>
+
+            {slots.length === 0 && !slotsLoading ? (
+              <div className="text-xs text-slate-500 py-3 text-center">No slots available for this doctor on selected date.</div>
+            ) : (
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 max-h-48 overflow-y-auto p-1 bg-white rounded-lg border border-slate-200">
+                {slots.map((s: any) => {
+                  const isSelected = bookForm.timeSlot === s.timeSlot;
+                  const isAvail = s.isAvailable;
+                  return (
+                    <button
+                      key={s.timeSlot}
+                      type="button"
+                      disabled={!isAvail}
+                      onClick={() => setBookForm((prev) => ({ ...prev, timeSlot: s.timeSlot }))}
+                      className={`px-2 py-1.5 rounded text-xs font-mono font-medium transition-all text-center flex flex-col items-center justify-center ${
+                        isSelected
+                          ? "bg-teal-600 text-white font-bold shadow ring-2 ring-teal-400"
+                          : isAvail
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-400"
+                          : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed line-through"
+                      }`}
+                      title={isAvail ? "Available (Click to book)" : "Already Booked"}
+                    >
+                      <span>{s.timeSlot}</span>
+                      <span className="text-[9px] font-sans font-semibold scale-90">
+                        {isSelected ? "SELECTED" : isAvail ? "AVAILABLE" : "BOOKED"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <Input
@@ -440,7 +527,7 @@ export const PatientPortalPage: React.FC = () => {
             <Button variant="secondary" type="button" onClick={() => setBookModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" loading={bookLoading}>
+            <Button type="submit" loading={bookLoading} disabled={!bookForm.timeSlot}>
               Confirm Appointment
             </Button>
           </div>

@@ -74,6 +74,8 @@ export const DoctorDashboardPage: React.FC = () => {
     vitalsSummary: "BP: 120/80, Pulse: 72, SpO2: 99%",
     diagnosisName: "Essential Hypertension",
     icdCode: "I10",
+    adviseAdmission: false,
+    admissionNotes: "",
     prescriptions: [
       { medicineName: "Telmisartan 40mg", dosage: "40mg", frequency: "1-0-0", durationDays: 30, quantity: 30 },
     ],
@@ -153,6 +155,8 @@ export const DoctorDashboardPage: React.FC = () => {
       vitalsSummary: "BP: 120/80 mmHg, Pulse: 74 bpm, SpO2: 99%",
       diagnosisName: "Acute Upper Respiratory Infection",
       icdCode: "J06.9",
+      adviseAdmission: false,
+      admissionNotes: "Patient requires inpatient admission for continuous clinical monitoring and supportive care.",
       prescriptions: [
         { medicineName: "Paracetamol 650mg", dosage: "650mg", frequency: "1-0-1", durationDays: 5, quantity: 10 },
       ],
@@ -193,6 +197,8 @@ export const DoctorDashboardPage: React.FC = () => {
         symptoms: consultForm.symptoms,
         notes: consultForm.notes,
         vitalsSummary: consultForm.vitalsSummary,
+        adviseAdmission: consultForm.adviseAdmission,
+        admissionNotes: consultForm.adviseAdmission ? consultForm.admissionNotes : null,
         diagnoses: [
           { diagnosisName: consultForm.diagnosisName, icdCode: consultForm.icdCode, type: "FINAL" },
         ],
@@ -515,6 +521,20 @@ export const DoctorDashboardPage: React.FC = () => {
                     </span>
                   ) : (
                     <span className="text-xs text-slate-400">None Recorded</span>
+                  ),
+              },
+              {
+                header: "Admission Status",
+                accessor: (r: any) =>
+                  r.admissionAdvised ? (
+                    <div className="space-y-1">
+                      <Badge variant="danger">🏥 Admission Advised</Badge>
+                      <p className="text-[10px] text-rose-700 font-medium truncate max-w-xs" title={r.admissionAdviceNotes}>
+                        {r.admissionAdvisedBy ? `By ${r.admissionAdvisedBy}` : "Pending IPD Ward Bed"}
+                      </p>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">OPD / Outpatient</span>
                   ),
               },
               {
@@ -993,6 +1013,52 @@ export const DoctorDashboardPage: React.FC = () => {
                 );
               })}
             </div>
+          </div>
+
+          {/* Doctor Admission Advice Section */}
+          <div className="p-4 bg-rose-50/60 rounded-xl border border-rose-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🏥</span>
+                <div>
+                  <h4 className="text-xs font-bold text-rose-900 uppercase tracking-wider">
+                    Advise Inpatient (IPD) Hospital Admission
+                  </h4>
+                  <p className="text-[11px] text-rose-700">
+                    Rule: Only patients with Doctor Admission Advice can be admitted to hospital beds/wards.
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={consultForm.adviseAdmission}
+                  onChange={(e) => setConsultForm({ ...consultForm, adviseAdmission: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"></div>
+              </label>
+            </div>
+
+            {consultForm.adviseAdmission && (
+              <div className="pt-2 border-t border-rose-200/60 space-y-2">
+                <label className="block text-xs font-semibold text-rose-950">
+                  Clinical Admission Indication & Care Directives <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  rows={2}
+                  required={consultForm.adviseAdmission}
+                  value={consultForm.admissionNotes}
+                  onChange={(e) => setConsultForm({ ...consultForm, admissionNotes: e.target.value })}
+                  placeholder="e.g. Uncontrolled blood pressure with chest pain, requires ICU monitoring and IV antihypertensives..."
+                  className="w-full rounded-lg border border-rose-300 text-xs p-2.5 text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                />
+                <div className="text-[11px] text-rose-800 bg-rose-100/70 p-2 rounded flex items-center gap-1.5 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  This advice will be logged on patient's EHR and unlock ward bed allocation in IPD Management.
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="pt-3 border-t flex items-center justify-between">

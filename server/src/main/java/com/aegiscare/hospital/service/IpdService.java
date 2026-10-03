@@ -58,31 +58,60 @@ public class IpdService {
     public Admission admitPatient(Map<String, Object> req, String admittedBy) {
         String patientId = (String) req.get("patientId");
         String bedId = (String) req.get("bedId");
+        String doctorId = (String) req.get("doctorId");
         String reasonForAdmission = (String) req.get("reasonForAdmission");
+        if (reasonForAdmission == null || reasonForAdmission.isBlank()) {
+            reasonForAdmission = (String) req.get("reason");
+        }
 
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new ResourceNotFoundException("Patient not found: " + patientId));
 
+        // Enforce Doctor Admission Advice Rule: Only admitted if a Doctor has advised admission
+        if (!patient.isAdmissionAdvised()) {
+            throw new com.aegiscare.hospital.exception.ApiException(
+                    "Admission Blocked: Patient " + patient.getFirstName() + " " + patient.getLastName() +
+                    " (" + patient.getUhid() + ") cannot be admitted without prior Doctor Admission Advice recorded during clinical consultation."
+            );
+        }
+
         Bed bed = bedRepository.findById(bedId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bed not found: " + bedId));
 
-        List<Doctor> docs = doctorRepository.findAll();
-        Doctor doc = docs.isEmpty() ? null : docs.get(0);
+        if ("OCCUPIED".equalsIgnoreCase(bed.getStatus())) {
+            throw new com.aegiscare.hospital.exception.ApiException("Bed " + bed.getBedNumber() + " is currently OCCUPIED. Please select an AVAILABLE bed.");
+        }
+
+        Doctor doc = null;
+        if (doctorId != null && !doctorId.isBlank()) {
+            doc = doctorRepository.findById(doctorId).orElse(null);
+        }
+        if (doc == null) {
+            List<Doctor> docs = doctorRepository.findAll();
+            doc = docs.isEmpty() ? null : docs.get(0);
+        }
 
         Admission admission = new Admission();
         admission.setAdmissionNumber("ADM-" + System.currentTimeMillis() % 1000000);
         admission.setPatient(patient);
         admission.setDoctor(doc);
         admission.setAdmissionDate(LocalDateTime.now());
-        admission.setReason(reasonForAdmission);
-        admission.setStatus("ADMITTED");
+        admission.setReason(reasonForAdmission != null && !reasonForAdmission.isBlank()
+                ? reasonForAdmission
+                : (patient.getAdmissionAdviceNotes() != null ? patient.getAdmissionAdviceNotes() : "Inpatient therapeutic admission"));
+        admission.setStatus("ACTIVE");
         admission.setWard(bed.getWard());
         admission.setBed(bed);
 
         Admission saved = admissionRepository.save(admission);
 
+        // Update Bed Status
         bed.setStatus("OCCUPIED");
         bedRepository.save(bed);
+
+        // Reset admission advised flag on patient since they are now admitted
+        patient.setAdmissionAdvised(false);
+        patientRepository.save(patient);
 
         BedAssignment assignment = new BedAssignment();
         assignment.setAdmission(saved);
