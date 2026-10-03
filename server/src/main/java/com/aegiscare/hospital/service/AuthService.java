@@ -107,12 +107,19 @@ public class AuthService {
             role = Role.PATIENT;
         }
 
+        String fn = request.getFirstName();
+        String ln = request.getLastName();
+        if (ln == null || ln.isBlank()) {
+            ln = "User";
+        }
+        String phone = request.getPhone() != null && !request.getPhone().isBlank() ? request.getPhone() : "N/A";
+
         User user = new User();
         user.setEmail(request.getEmail().toLowerCase().trim());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setPhone(request.getPhone());
+        user.setFirstName(fn);
+        user.setLastName(ln);
+        user.setPhone(phone);
         user.setRole(role);
         user.setActive(true);
 
@@ -123,10 +130,10 @@ public class AuthService {
             Patient patient = new Patient();
             patient.setUser(savedUser);
             patient.setUhid("UHID-" + (System.currentTimeMillis() % 10000000));
-            patient.setFirstName(request.getFirstName());
-            patient.setLastName(request.getLastName());
+            patient.setFirstName(fn);
+            patient.setLastName(ln);
             patient.setEmail(request.getEmail());
-            patient.setPhone(request.getPhone());
+            patient.setPhone(phone);
             patient.setGender(request.getGender() != null ? request.getGender() : "MALE");
             patient.setBloodGroup(request.getBloodGroup() != null ? request.getBloodGroup() : "O_POSITIVE");
             patient.setAddress(request.getAddress());

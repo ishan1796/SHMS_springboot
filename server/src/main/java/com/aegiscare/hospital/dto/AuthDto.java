@@ -39,10 +39,11 @@ public class AuthDto {
         private String email;
         @NotBlank
         private String password;
-        @NotBlank
         private String firstName;
-        @NotBlank
         private String lastName;
+        private String name;
+        private String fullName;
+        private String username;
         private String phone;
         private String role = "PATIENT";
         private String dob;
@@ -54,13 +55,48 @@ public class AuthDto {
         public void setEmail(String email) { this.email = email; }
         public String getPassword() { return password; }
         public void setPassword(String password) { this.password = password; }
-        public String getFirstName() { return firstName; }
+
+        public String getFirstName() {
+            if (firstName != null && !firstName.isBlank()) {
+                return firstName.trim();
+            }
+            String combined = (fullName != null && !fullName.isBlank()) ? fullName : (name != null && !name.isBlank()) ? name : username;
+            if (combined != null && !combined.isBlank()) {
+                String[] parts = combined.trim().split("\\s+");
+                return parts[0];
+            }
+            if (email != null && email.contains("@")) {
+                return email.substring(0, email.indexOf("@"));
+            }
+            return "User";
+        }
+
         public void setFirstName(String firstName) { this.firstName = firstName; }
-        public String getLastName() { return lastName; }
+
+        public String getLastName() {
+            if (lastName != null && !lastName.isBlank()) {
+                return lastName.trim();
+            }
+            String combined = (fullName != null && !fullName.isBlank()) ? fullName : (name != null && !name.isBlank()) ? name : username;
+            if (combined != null && !combined.isBlank()) {
+                String[] parts = combined.trim().split("\\s+", 2);
+                if (parts.length > 1) {
+                    return parts[1];
+                }
+            }
+            return "";
+        }
+
         public void setLastName(String lastName) { this.lastName = lastName; }
-        public String getPhone() { return phone; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getFullName() { return fullName; }
+        public void setFullName(String fullName) { this.fullName = fullName; }
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        public String getPhone() { return phone != null ? phone : ""; }
         public void setPhone(String phone) { this.phone = phone; }
-        public String getRole() { return role; }
+        public String getRole() { return role != null ? role : "PATIENT"; }
         public void setRole(String role) { this.role = role; }
         public String getDob() { return dob; }
         public void setDob(String dob) { this.dob = dob; }
