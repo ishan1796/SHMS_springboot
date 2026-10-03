@@ -6,9 +6,9 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  loginAsRole: (role: UserRole) => Promise<void>;
-  registerPatient: (data: any) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  loginAsRole: (role: UserRole) => Promise<User>;
+  registerPatient: (data: any) => Promise<User>;
   logout: () => void;
   hasRole: (...roles: UserRole[]) => boolean;
 }
@@ -54,31 +54,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const res = await api.post("/auth/login", { email, password });
     if (res.data.success) {
       const { token: newToken, user: userData } = res.data;
       localStorage.setItem("aegis_token", newToken);
       setToken(newToken);
       setUser(userData);
+      return userData;
     }
+    throw new Error(res.data.message || "Login failed");
   };
 
-  const loginAsRole = async (role: UserRole) => {
+  const loginAsRole = async (role: UserRole): Promise<User> => {
     const creds = DEMO_CREDENTIALS[role];
     if (creds) {
-      await login(creds.email, creds.pass);
+      return await login(creds.email, creds.pass);
     }
+    throw new Error(`No credentials found for role ${role}`);
   };
 
-  const registerPatient = async (data: any) => {
+  const registerPatient = async (data: any): Promise<User> => {
     const res = await api.post("/auth/register", data);
     if (res.data.success) {
       const { token: newToken, user: userData } = res.data;
-      localStorage.setItem("aegis_token", newToken);
-      setToken(newToken);
-      setUser(userData);
+      if (newToken) {
+        localStorage.setItem("aegis_token", newToken);
+        setToken(newToken);
+        setUser(userData);
+      }
+      return userData;
     }
+    throw new Error(res.data.message || "Registration failed");
   };
 
   const logout = () => {

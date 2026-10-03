@@ -160,8 +160,8 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await loginAsRole(role);
-      navigate(getRouteForRole(role));
+      const loggedUser = await loginAsRole(role);
+      navigate(getRouteForRole((loggedUser?.role || role) as UserRole));
     } catch (err: any) {
       setError(err.response?.data?.message || "Login failed.");
     } finally {
@@ -174,10 +174,10 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await login(email, password);
-      navigate("/admin");
+      const loggedUser = await login(email, password);
+      navigate(getRouteForRole((loggedUser?.role || "ADMIN") as UserRole));
     } catch (err: any) {
-      setError(err.response?.data?.message || "Invalid credentials.");
+      setError(err.response?.data?.message || err.message || "Invalid credentials.");
     } finally {
       setLoading(false);
     }
@@ -185,13 +185,18 @@ export const LoginPage: React.FC = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!regData.email || !regData.password || !regData.firstName || !regData.lastName) {
+      alert("Please enter first name, last name, email, and password.");
+      return;
+    }
     setRegLoading(true);
     try {
-      await registerPatient(regData);
+      const registeredUser = await registerPatient(regData);
       setRegisterModalOpen(false);
-      navigate("/patient");
+      alert(`Account registered successfully for ${regData.firstName}! You are now logged in.`);
+      navigate(getRouteForRole((registeredUser?.role || "PATIENT") as UserRole));
     } catch (err: any) {
-      alert(err.response?.data?.message || "Registration failed.");
+      alert(err.response?.data?.message || err.message || "Registration failed.");
     } finally {
       setRegLoading(false);
     }
@@ -354,6 +359,19 @@ export const LoginPage: React.FC = () => {
               <Button type="submit" loading={loading} className="w-full py-2.5 mt-2 bg-teal-600 hover:bg-teal-500">
                 Authenticate & Enter
               </Button>
+
+              <div className="pt-4 border-t border-slate-700/60 text-center">
+                <p className="text-xs text-slate-400">
+                  New Patient?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setRegisterModalOpen(true)}
+                    className="text-teal-400 font-bold hover:underline"
+                  >
+                    Create Patient Account (Sign Up)
+                  </button>
+                </p>
+              </div>
             </form>
           </div>
         )}
@@ -363,7 +381,7 @@ export const LoginPage: React.FC = () => {
       <Modal
         isOpen={registerModalOpen}
         onClose={() => setRegisterModalOpen(false)}
-        title="Patient Self-Registration Portal"
+        title="Patient Self-Registration & Account Signup"
         maxWidth="lg"
       >
         <form onSubmit={handleRegister} className="space-y-4">
@@ -386,7 +404,7 @@ export const LoginPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Email Address"
+              label="Official Email Address"
               type="email"
               required
               value={regData.email}
@@ -394,10 +412,28 @@ export const LoginPage: React.FC = () => {
               placeholder="patient@example.com"
             />
             <Input
+              label="Account Password"
+              type="password"
+              required
+              value={regData.password}
+              onChange={(e) => setRegData({ ...regData, password: e.target.value })}
+              placeholder="Create your login password"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
               label="Mobile Phone"
               required
               value={regData.phone}
               onChange={(e) => setRegData({ ...regData, phone: e.target.value })}
+              placeholder="+91 98765 43210"
+            />
+            <Input
+              label="Residential Address"
+              value={regData.address}
+              onChange={(e) => setRegData({ ...regData, address: e.target.value })}
+              placeholder="Flat 102, Blossom Heights, Sector 15"
             />
           </div>
 
@@ -442,13 +478,6 @@ export const LoginPage: React.FC = () => {
               </select>
             </div>
           </div>
-
-          <Input
-            label="Residential Address"
-            value={regData.address}
-            onChange={(e) => setRegData({ ...regData, address: e.target.value })}
-            placeholder="Flat 102, Blossom Heights, Sector 15"
-          />
 
           <div className="pt-3 border-t flex justify-end gap-2">
             <Button variant="secondary" type="button" onClick={() => setRegisterModalOpen(false)}>

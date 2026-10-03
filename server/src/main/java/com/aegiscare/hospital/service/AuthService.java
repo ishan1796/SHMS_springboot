@@ -122,14 +122,24 @@ public class AuthService {
         if (role == Role.PATIENT) {
             Patient patient = new Patient();
             patient.setUser(savedUser);
-            patient.setUhid("UHID-" + System.currentTimeMillis() % 10000000);
+            patient.setUhid("UHID-" + (System.currentTimeMillis() % 10000000));
             patient.setFirstName(request.getFirstName());
             patient.setLastName(request.getLastName());
             patient.setEmail(request.getEmail());
             patient.setPhone(request.getPhone());
+            patient.setGender(request.getGender() != null ? request.getGender() : "MALE");
+            patient.setBloodGroup(request.getBloodGroup() != null ? request.getBloodGroup() : "O_POSITIVE");
+            patient.setAddress(request.getAddress());
+            if (request.getDob() != null && !request.getDob().isBlank()) {
+                try {
+                    patient.setDob(java.time.LocalDate.parse(request.getDob()));
+                } catch (Exception ignored) {}
+            }
             Patient savedPatient = patientRepository.save(patient);
             patientId = savedPatient.getId();
         }
+
+        String token = tokenProvider.generateToken(savedUser, patientId, null, null);
 
         auditService.record(
                 savedUser.getId(),
@@ -152,6 +162,7 @@ public class AuthService {
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
+        response.put("token", token);
         response.put("message", "User registered successfully");
         response.put("user", userMap);
         return response;

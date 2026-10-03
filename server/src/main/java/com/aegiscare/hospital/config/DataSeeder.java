@@ -17,6 +17,7 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired private DepartmentRepository departmentRepository;
     @Autowired private DoctorRepository doctorRepository;
     @Autowired private NurseRepository nurseRepository;
+    @Autowired private EmployeeRepository employeeRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private WardRepository wardRepository;
     @Autowired private BedRepository bedRepository;
@@ -57,9 +58,20 @@ public class DataSeeder implements CommandLineRunner {
         User messUser = createUser("mess@hospital.com", encodedPassword, "Gordon", "Ramsay", Role.MESS, "9876543217");
         User patUser = createUser("patient@hospital.com", encodedPassword, "James", "Holden", Role.PATIENT, "9876543218");
 
+        // Employee Profiles
+        Employee docEmp = createEmp(docUser, cardio, "Senior Consultant Cardiologist", 150000.0, "MORNING");
+        Employee nurseEmp = createEmp(nurseUser, genMed, "Head Ward Sister", 55000.0, "MORNING");
+        createEmp(admin, genMed, "Hospital Administrator", 180000.0, "GENERAL");
+        createEmp(pharmUser, genMed, "Chief Pharmacist", 50000.0, "MORNING");
+        createEmp(labUser, labDept, "Lab Director", 65000.0, "MORNING");
+        createEmp(finUser, genMed, "Finance Head", 70000.0, "GENERAL");
+        createEmp(hrmsUser, genMed, "HR Director", 75000.0, "GENERAL");
+        createEmp(messUser, genMed, "Chief Nutritionist", 45000.0, "MORNING");
+
         // Doctor Profile
         Doctor doctor = new Doctor();
         doctor.setUser(docUser);
+        doctor.setEmployee(docEmp);
         doctor.setDepartment(cardio);
         doctor.setSpecialization("Cardiologist");
         doctor.setLicenseNumber("DOC-MED-88912");
@@ -70,6 +82,7 @@ public class DataSeeder implements CommandLineRunner {
         // Nurse Profile
         Nurse nurse = new Nurse();
         nurse.setUser(nurseUser);
+        nurse.setEmployee(nurseEmp);
         nurse.setDepartment(genMed);
         nurse.setLicenseNumber("NUR-REG-44321");
         nurseRepository.save(nurse);
@@ -232,6 +245,18 @@ public class DataSeeder implements CommandLineRunner {
         u.setPhone(phone);
         u.setActive(true);
         return userRepository.save(u);
+    }
+
+    private Employee createEmp(User user, Department dept, String designation, Double salary, String shift) {
+        Employee emp = new Employee();
+        emp.setUser(user);
+        emp.setDepartment(dept);
+        emp.setEmployeeCode("EMP-" + (System.currentTimeMillis() % 10000) + "-" + user.getRole().name().substring(0, Math.min(3, user.getRole().name().length())));
+        emp.setDesignation(designation);
+        emp.setSalary(salary);
+        emp.setShift(shift);
+        emp.setEmploymentStatus("ACTIVE");
+        return employeeRepository.save(emp);
     }
 
     private void createLabTest(String name, String code, String category, Double price, String unit, String normalRange) {
